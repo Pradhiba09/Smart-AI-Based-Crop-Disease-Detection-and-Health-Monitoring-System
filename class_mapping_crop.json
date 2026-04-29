@@ -1,0 +1,21 @@
+{
+  "0": "Apple___Apple_scab",
+  "1": "Apple___Black_rot",
+  "2": "Apple___Cedar_apple_rust",
+  "3": "Apple___healthy",
+  "4": "Corn___Cercospora_leaf_spot",
+  "5": "Corn___Common_rust",
+  "6": "Corn___Northern_Leaf_Blight",
+  "7": "Corn___healthy",
+  "8": "Grape___Black_rot",
+  "9": "Grape___Esca",
+  "10": "Grape___Leaf_blight",
+  "11": "Grape___healthy",
+  "12": "Wheat___Leaf_rust",
+  "13": "Wheat___Stripe_rust",
+  "14": "Wheat___Tan_spot",
+  "15": "Wheat___healthy",
+  "16": "Cucumber___Angular_leaf_spot",
+  "17": "Cucumber___Downy_mildew",
+  "18": "Cucumber___healthy"
+}

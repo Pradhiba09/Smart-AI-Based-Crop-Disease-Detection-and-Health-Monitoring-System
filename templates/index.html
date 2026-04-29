@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agri Cure - Smart Crop Disease Detection</title>
+    <!-- Tailwind CDN (play) - quick styling without changing project structure -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="navbar bg-gradient-to-r from-purple-600 via-pink-500 to-red-400 text-white">
+        <div class="nav-content max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+            <div class="logo-container flex items-center space-x-3">
+                <span class="logo-emoji-left text-2xl">🌿</span>
+                <h1 class="logo text-xl font-semibold">Agri Cure</h1>
+                <span class="logo-emoji-right text-lg">🔬</span>
+            </div>
+            <div class="nav-actions flex items-center space-x-3">
+                <a href="/" class="text-sm text-white hover:text-gray-100">🏠 Home</a>
+                <a href="/how-it-works" class="text-sm text-white hover:text-gray-100">💡 How It Works</a>
+
+                <div class="dropdown relative">
+                    <button class="btn px-3 py-2 rounded-md text-sm bg-green-600 text-white" id="menuBtn" onclick="toggleMenu()" title="Menu">☰ Menu</button>
+                    <div class="dropdown-menu hidden absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-md z-50" id="menuDropdown">
+                        <button class="dropdown-item block w-full text-left px-4 py-2 text-sm hover:bg-gray-100" onclick="renderHistory(); document.getElementById('historyContainer')?.scrollIntoView({behavior:'smooth'})">🕘 Recent Analyses</button>
+                        <button class="dropdown-item block w-full text-left px-4 py-2 text-sm hover:bg-gray-100" onclick="openTreatmentGuide()">📋 Treatment Guide</button>
+                        <button class="dropdown-item block w-full text-left px-4 py-2 text-sm hover:bg-gray-100" onclick="openModelModal()">⬆️ Upload Model</button>
+                    </div>
+                </div>
+
+                <button id="uploadModelBtn" class="btn px-3 py-2 rounded-md text-sm bg-blue-600 text-white" title="Upload model" onclick="openModelModal()">⬆️ Upload Model</button>
+
+                <button id="themeToggleBtn" class="btn px-3 py-2 rounded-md text-sm bg-gray-100" title="Toggle theme" onclick="toggleTheme()">🎨 Theme</button>
+
+                {% if model_status %}
+                <div class="text-sm text-white/90 ml-4">{{ model_status }}</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Tailwind-styled hero (keeps existing UI intact) -->
+        <div class="hero bg-gradient-to-r from-green-400 to-blue-500 text-white py-16">
+            <div class="max-w-5xl mx-auto px-4 text-center">
+                <h2 class="text-4xl font-extrabold mb-4">Agri Cure</h2>
+                <p class="text-lg mb-6">Smart Crop Disease Detection & Actionable Treatment Plans</p>
+                <a href="#uploadForm" class="inline-block bg-white text-green-700 font-semibold px-6 py-3 rounded-lg shadow-md hover:opacity-90">Analyze Your Crop</a>
+            </div>
+        </div>
+        </div>
+
+        <div class="container">
+        {% if error %}
+        <div class="alert alert-error">
+            <span class="alert-icon">⚠️</span>
+            <div>
+                <strong>Error</strong>
+                <p>{{ error }}</p>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="main-content">
+            <!-- Upload Section -->
+            <div class="card upload-card">
+                <h2 class="section-title">📸 Upload Crop Image</h2>
+                <form method="POST" enctype="multipart/form-data" id="uploadForm" class="upload-form">
+                    <div class="file-input-wrapper">
+                        <input type="file" id="imageInput" name="image" accept="image/*" required>
+                        <label for="imageInput" class="file-input-label">
+                            <span class="upload-icon">📁</span>
+                            <p>Click to select image or drag & drop</p>
+                            <small>Supported: JPG, PNG, JPEG</small>
+                        </label>
+                    </div>
+
+                    <!-- Model selector -->
+                    <div style="margin-top:1rem;">
+                        <label for="modelSelect" style="font-weight:700;">Select Model:</label>
+                        <select id="modelSelect" name="model_choice" style="width:100%; padding:0.5rem; margin-top:0.5rem; border-radius:8px; border:1px solid var(--border-color); background:#e8f5e9;">
+                            <option value="old">Crops (Pepper, Potato, Tomato)</option>
+                            <option value="new">New Crops (Apple, Corn, Grape, Wheat, Cucumber)</option>
+                        </select>
+                    </div>
+
+                    <!-- Crop selector -->
+                    <div style="margin-top:1rem;">
+                        <label for="cropSelect" style="font-weight:700;">Select crop (optional):</label>
+                        <select id="cropSelect" name="crop" style="width:100%; padding:0.5rem; margin-top:0.5rem; border-radius:8px; border:1px solid var(--border-color);">
+                            <option value="">-- Auto detect --</option>
+                            {% for c in crops %}
+                            <option value="{{ c }}">{{ c }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Image Preview -->
+                    <div id="imagePreview" class="image-preview hidden">
+                        <img id="previewImg" alt="Preview">
+                        <button type="button" class="btn-remove" onclick="clearImage()">✕</button>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-large" id="submitBtn">
+                        <span>🔍 Analyze Disease</span>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Results Section -->
+            {% if result %}
+            <div class="card result-card">
+                <h2 class="section-title">✅ Analysis Result</h2>
+                
+                {% if image_url %}
+                <div class="result-image">
+                    <img src="{{ url_for('static', filename=image_url) }}" alt="Analyzed Image" />
+                </div>
+                {% endif %}
+
+                <div class="result-info">
+                    <div class="info-box">
+                        <div class="info-header">🌾 Crop Type</div>
+                        <div class="info-value">{{ info.crop or 'Unknown Crop' }}</div>
+                    </div>
+
+                    <div class="info-box">
+                        <div class="info-header">🦠 Disease Detected</div>
+                            <div class="info-value disease-name">{{ info.disease or 'Unknown Disease' }}</div>
+                            {% if model_status and 'Confidence' in model_status %}
+                            <div class="info-sub">{{ model_status.split('—')[1]|default('') }}</div>
+                            {% endif %}
+                    </div>
+                </div>
+
+                    <!-- Action Buttons -->
+                <button type="button" class="btn btn-treatment" onclick="openTreatmentGuide()">
+                    📋 View Treatment Plan
+                </button>
+
+                    <button type="button" class="btn" onclick="copySolution()" title="Copy solution">📋 Copy Treatment</button>
+                    <button type="button" class="btn" onclick="downloadReport()" title="Download report">⬇️ Download Report</button>
+                    <a href="/" class="btn btn-secondary" role="button">
+                        🔄 Analyze Another Image
+                    </a>
+            </div>
+
+            <!-- Treatment Guide Modal -->
+            <div id="treatmentModal" class="modal hidden">
+                <div class="modal-content">
+                    <button class="modal-close" onclick="closeTreatmentGuide()">✕</button>
+                    
+                    <div class="treatment-header">
+                        <h2>🏥 Treatment & Care Guide</h2>
+                        <p class="disease-title">Disease: <span id="modalDiseaseName">{{ info.disease }}</span></p>
+                    </div>
+
+                    <div class="treatment-steps">
+                        <div class="step-card">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <h3>🔍 Diagnosis</h3>
+                                <p>Your crop has been diagnosed with <strong id="diagnosisDisease">{{ info.disease }}</strong>. This disease affects the health and productivity of your plants.</p>
+                            </div>
+                        </div>
+
+                        <div class="step-card">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <h3>⚠️ Immediate Actions</h3>
+                                <ul>
+                                    <li>Isolate infected plants immediately</li>
+                                    <li>Remove and destroy affected leaves</li>
+                                    <li>Avoid watering leaves - water soil only</li>
+                                    <li>Wear gloves when handling infected plants</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="step-card">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <h3>💊 Treatment Options</h3>
+                                <div class="treatment-option">
+                                    <h4>Option A: Recommended Treatment</h4>
+                                    <p id="modalSolution">{{ info.solution }}</p>
+                                </div>
+                                <div class="treatment-option">
+                                    <h4>Option B: Organic Alternative</h4>
+                                    <ul>
+                                        <li>Use neem oil spray (1% concentration)</li>
+                                        <li>Apply sulfur dust for fungal infections</li>
+                                        <li>Use copper fungicide as preventive</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="step-card">
+                            <div class="step-number">4</div>
+                            <div class="step-content">
+                                <h3>🌱 Prevention & Maintenance</h3>
+                                <ul>
+                                    <li>Maintain proper spacing for air circulation</li>
+                                    <li>Ensure 6-8 hours of sunlight daily</li>
+                                    <li>Remove fallen leaves and debris</li>
+                                    <li>Rotate crops yearly</li>
+                                    <li>Avoid overhead watering</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="step-card">
+                            <div class="step-number">5</div>
+                            <div class="step-content">
+                                <h3>📅 Follow-up Care</h3>
+                                <ul>
+                                    <li>Monitor plants daily for 2-3 weeks</li>
+                                    <li>Check for new infections every morning</li>
+                                    <li>Repeat treatment if symptoms persist</li>
+                                    <li>Keep detailed records of treatment dates</li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="step-card success-card">
+                            <div class="step-number">✓</div>
+                            <div class="step-content">
+                                <h3>🎉 Recovery Timeline</h3>
+                                <p><strong>Week 1:</strong> Stop disease spread</p>
+                                <p><strong>Week 2-3:</strong> Visible improvement expected</p>
+                                <p><strong>Week 4+:</strong> Full recovery expected</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn btn-secondary" style="width: 100%; margin-top: 2rem;" onclick="closeTreatmentGuide()">
+                        Close Guide
+                    </button>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>🚀 AgriCure - Smart Crop Disease Detection | Powered by AI & Machine Learning</p>
+    </footer>
+
+    <!-- Model Upload Modal -->
+    <div id="modelModal" class="modal hidden">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModelModal()">✕</button>
+            <h2>Upload Trained Model (.h5)</h2>
+            <p>Upload a Keras `.h5` model to use for inference. The server will attempt to reload the model after upload.</p>
+            <form id="modelUploadForm" onsubmit="handleModelUpload(event)">
+                <div style="margin-bottom:1rem;">
+                    <label for="modelTypeSelect" style="font-weight:700; display:block; margin-bottom:0.5rem;">Select Model Type:</label>
+                    <select id="modelTypeSelect" name="model_type" style="width:100%; padding:0.5rem; border-radius:8px; border:1px solid var(--border-color); background:#e8f5e9;">
+                        <option value="old">🌶️ Old Crops Model (Pepper, Potato, Tomato)</option>
+                        <option value="new">🍎 New Crops Model (Apple, Corn, Grape, Wheat, Cucumber)</option>
+                    </select>
+                </div>
+                <input type="file" id="modelFileInput" name="model" accept=".h5,.hdf5" required>
+                <button type="submit" class="btn btn-primary" style="margin-top:1rem;">Upload Model</button>
+            </form>
+            <div id="modelUploadStatus" style="margin-top:1rem;"></div>
+            <button type="button" class="btn btn-secondary" style="width:100%; margin-top:1.5rem;" onclick="closeModelModal()">Close</button>
+        </div>
+    </div>
+
+    <script>
+        // App State Management
+        const appState = {
+            image: null,
+            isLoading: false,
+            error: null,
+            showTreatment: false
+        };
+
+        // DOM Elements
+        const imageInput = document.getElementById('imageInput');
+        const imagePreview = document.getElementById('imagePreview');
+        const previewImg = document.getElementById('previewImg');
+        const uploadForm = document.getElementById('uploadForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const fileInputLabel = document.querySelector('.file-input-label');
+        const treatmentModal = document.getElementById('treatmentModal');
+
+        // Event Listeners
+        imageInput.addEventListener('change', handleImageSelect);
+        uploadForm.addEventListener('dragover', handleDragOver);
+        uploadForm.addEventListener('dragleave', handleDragLeave);
+        uploadForm.addEventListener('drop', handleDrop);
+        uploadForm.addEventListener('submit', handleFormSubmit);
+        
+        // Close modal with ESC key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && treatmentModal && !treatmentModal.classList.contains('hidden')) {
+                closeTreatmentGuide();
+            }
+        });
+
+        // Image Selection Handler
+        function handleImageSelect(e) {
+            const file = e.target.files[0];
+            if (file && validateFile(file)) {
+                updateAppState({ image: file });
+                displayPreview(file);
+            }
+        }
+
+        // Drag Over Handler
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            uploadForm.classList.add('drag-over');
+            if (fileInputLabel) {
+                fileInputLabel.style.transform = 'scale(1.02)';
+            }
+        }
+
+        // Drag Leave Handler
+        function handleDragLeave(e) {
+            e.preventDefault();
+            uploadForm.classList.remove('drag-over');
+            if (fileInputLabel) {
+                fileInputLabel.style.transform = 'scale(1)';
+            }
+        }
+
+        // Drop Handler
+        function handleDrop(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            uploadForm.classList.remove('drag-over');
+            if (fileInputLabel) {
+                fileInputLabel.style.transform = 'scale(1)';
+            }
+            
+            const file = e.dataTransfer.files[0];
+            if (file && validateFile(file)) {
+                imageInput.files = e.dataTransfer.files;
+                updateAppState({ image: file });
+                displayPreview(file);
+            }
+        }
+
+        // Validate File
+        function validateFile(file) {
+            const maxSize = 5 * 1024 * 1024; // 5MB
+            const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+            
+            if (!allowedTypes.includes(file.type)) {
+                showError('Invalid file type. Please use JPG, PNG, or WebP.');
+                return false;
+            }
+            
+            if (file.size > maxSize) {
+                showError('File is too large. Maximum size is 5MB.');
+                return false;
+            }
+            
+            return true;
+        }
+
+        // Display Preview with Animation
+        function displayPreview(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImg.src = e.target.result;
+                imagePreview.classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Clear Image
+        function clearImage() {
+            imageInput.value = '';
+            updateAppState({ image: null });
+            imagePreview.classList.add('hidden');
+            previewImg.src = '';
+        }
+
+        // Form Submit Handler
+        function handleFormSubmit(e) {
+            if (!appState.image) {
+                e.preventDefault();
+                showError('Please select an image first.');
+                return;
+            }
+
+            updateAppState({ isLoading: true, error: null });
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span>⏳ Analyzing...</span>';
+            submitBtn.style.opacity = '0.8';
+        }
+
+        // Update App State
+        function updateAppState(updates) {
+            Object.assign(appState, updates);
+        }
+
+        // Show Error Message
+        function showError(message) {
+            updateAppState({ error: message });
+            console.error('Error:', message);
+            alert(message);
+        }
+
+        // Treatment Guide Modal Functions
+        function openTreatmentGuide() {
+            if (treatmentModal) {
+                treatmentModal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            }
+        }
+
+        function closeTreatmentGuide() {
+            if (treatmentModal) {
+                treatmentModal.classList.add('hidden');
+                document.body.style.overflow = 'auto';
+            }
+        }
+
+        // Close modal when clicking outside
+        if (treatmentModal) {
+            treatmentModal.addEventListener('click', (e) => {
+                if (e.target === treatmentModal) {
+                    closeTreatmentGuide();
+                }
+            });
+        }
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🚀 AgriCure - Smart Crop Disease Detection System Loaded');
+                // load saved theme
+                const savedTheme = localStorage.getItem('agri_theme');
+                if (savedTheme === 'vibrant' || savedTheme === 'classic') {
+                    // 'vibrant' (new) or 'classic' (old) enable alt-theme
+                    document.body.classList.add('alt-theme');
+                }
+
+                // close menu dropdown when clicking outside
+                document.addEventListener('click', (e) => {
+                    const menu = document.getElementById('menuDropdown');
+                    const menuBtn = document.getElementById('menuBtn');
+                    if (menu && (!menuBtn || !menuBtn.contains(e.target))) menu.classList.add('hidden');
+                });
+
+                // push current result to local history if available
+                try {
+                    const disease = document.querySelector('.disease-name')?.innerText;
+                    const crop = document.querySelector('.info-info .info-value')?.innerText || document.querySelectorAll('.info-value')[0]?.innerText;
+                    if (disease) {
+                        const entry = {
+                            crop: crop || 'Unknown',
+                            disease: disease,
+                            solution: document.getElementById('modalSolution')?.innerText || '{{ info.solution|default("") }}',
+                            time: new Date().toISOString()
+                        };
+                        let hist = JSON.parse(localStorage.getItem('agri_history') || '[]');
+                        hist.unshift(entry);
+                        hist = hist.slice(0, 10);
+                        localStorage.setItem('agri_history', JSON.stringify(hist));
+                    }
+                } catch (e) { /* ignore */ }
+                renderHistory();
+        });
+
+        function toggleMenu() {
+            document.getElementById('menuDropdown')?.classList.toggle('hidden');
+        }
+        
+
+        function renderHistory() {
+            const containerId = 'historyContainer';
+            let container = document.getElementById(containerId);
+            if (!container) {
+                container = document.createElement('div');
+                container.id = containerId;
+                container.className = 'card';
+                container.style.marginTop = '1.5rem';
+                container.innerHTML = '<h3 class="section-title">🕘 Recent Analyses</h3><div id="historyList"></div>';
+                document.querySelector('.main-content').appendChild(container);
+            }
+            const list = document.getElementById('historyList');
+            const hist = JSON.parse(localStorage.getItem('agri_history') || '[]');
+            if (!hist.length) {
+                list.innerHTML = '<p style="color:var(--text-light)">No recent analyses</p>';
+                return;
+            }
+            list.innerHTML = hist.map(h => {
+                const t = new Date(h.time).toLocaleString();
+                return `<div class="history-item"><strong>${h.crop}</strong> — <span class="disease-name">${h.disease}</span><div class="history-time">${t}</div></div>`;
+            }).join('');
+        }
+
+        function copySolution() {
+            const txt = document.getElementById('modalSolution')?.innerText || '';
+            if (!txt) return alert('No solution available to copy.');
+            navigator.clipboard.writeText(txt).then(() => alert('Solution copied to clipboard'));
+        }
+
+        function downloadReport() {
+            const crop = document.querySelectorAll('.info-value')[0]?.innerText || 'Unknown';
+            const disease = document.querySelector('.disease-name')?.innerText || 'Unknown';
+            const solution = document.getElementById('modalSolution')?.innerText || '';
+            const time = new Date().toLocaleString();
+            const txt = `Crop: ${crop}\nDisease: ${disease}\nTime: ${time}\n\nSolution:\n${solution}`;
+            const blob = new Blob([txt], {type: 'text/plain'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `agricure_report_${Date.now()}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+            // Theme toggle: toggle between default and vibrant (alt-theme)
+            function toggleTheme() {
+                const isAlt = document.body.classList.toggle('alt-theme');
+                const active = isAlt ? 'vibrant' : 'default';
+                localStorage.setItem('agri_theme', active);
+            }
+
+            // Model upload modal
+            const modelModal = document.getElementById('modelModal');
+            function openModelModal() {
+                modelModal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            }
+            function closeModelModal() {
+                modelModal.classList.add('hidden');
+                document.body.style.overflow = 'auto';
+                document.getElementById('modelUploadStatus').innerText = '';
+                document.getElementById('modelFileInput').value = '';
+            }
+
+            async function handleModelUpload(e) {
+                e.preventDefault();
+                const input = document.getElementById('modelFileInput');
+                const modelTypeSelect = document.getElementById('modelTypeSelect');
+                if (!input.files || !input.files[0]) return;
+                const file = input.files[0];
+                const modelType = modelTypeSelect.value; // 'old' or 'new'
+                const form = new FormData();
+                form.append('model', file);
+                form.append('model_type', modelType);
+
+                const status = document.getElementById('modelUploadStatus');
+                status.innerText = 'Uploading...';
+
+                try {
+                    const res = await fetch('/upload_model', { method: 'POST', body: form });
+                    const data = await res.json();
+                    if (res.ok && data.success) {
+                        status.innerText = data.message;
+                        setTimeout(() => location.reload(), 1200);
+                    } else {
+                        status.innerText = data.message || 'Upload failed';
+                    }
+                } catch (err) {
+                    status.innerText = 'Upload error: ' + err;
+                }
+            }
+    </script>
+</body>
+</html>
