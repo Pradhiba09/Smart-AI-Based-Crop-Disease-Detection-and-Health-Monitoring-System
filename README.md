@@ -127,4 +127,4 @@ This project is licensed under the **MIT License**.
 
 ---
 
-<p align="center">Made with ❤️ for farmers and agriculture</p>
+<p align="center">🌱 Growing healthy crops with AI</p>
